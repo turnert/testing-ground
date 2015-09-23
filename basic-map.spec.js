@@ -24,4 +24,15 @@ describe('basic map', function () {
 			
 			basicMap.stdin.write(dataToWrite);
 	});
+	it('should exit when stdin is ended', function (done) {
+			var spawn = require('child_process').spawn,
+			basicMap = spawn('node', ['./basic-map.js']);
+			
+			basicMap.on('exit', function () {
+				expect(true).not.toBeTruthy();
+				done();	
+			});
+			
+			basicMap.stdin.end();
+	});
 });

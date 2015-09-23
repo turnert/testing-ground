@@ -1,6 +1,8 @@
-/* global describe, expect, it */
+/* global describe, expect, it, beforeEach, xit */
+
 describe('proto map reduce', function () {
-	var protoMapReduce,
+	var ProtoMapReduce = require('./proto-map-reduce.js'),
+		protoMapReduce,
 		fs = require('fs'),
 		methods = ['execute'],
 		inputFileName = './test',
@@ -9,9 +11,18 @@ describe('proto map reduce', function () {
 	
 	
 	beforeEach(function () {
-		protoMapReduce = require('./proto-map-reduce.js');
+		protoMapReduce = new ProtoMapReduce();
 		testData = [inputFileName];
 		doubleTestData = [inputFileName, inputFileName];
+	});
+	describe('constructor', function () {
+		it('should be a constructor', function () {
+			expect(protoMapReduce instanceof ProtoMapReduce).toBeTruthy();
+		});
+		it('should be a constructor even if invoked', function () {
+			var invokedProtoMapReduce = ProtoMapReduce();
+			expect(invokedProtoMapReduce instanceof ProtoMapReduce).toBeTruthy();
+		});
 	});
 	it('should be an object', function () {
 		expect(typeof protoMapReduce).toBe('object');
@@ -40,7 +51,7 @@ describe('proto map reduce', function () {
 					});
 				})
 			});
-			it('should work with multiple input files', function (done) {
+			xit('should work with multiple input files', function (done) {
 				protoMapReduce.execute(doubleTestData).then(function (result) {
 					console.log(result);
 					expect(result).not.toBeDefined();

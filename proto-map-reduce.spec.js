@@ -34,6 +34,7 @@ describe('proto map reduce', function () {
 	});
 	describe('API', function () {
 		describe('execute', function () {
+			
 			it('should return an object with a `then` property', function () {
 				expect(protoMapReduce.execute(testData).then).toBeDefined();
 			});
@@ -51,11 +52,13 @@ describe('proto map reduce', function () {
 					});
 				})
 			});
-			xit('should work with multiple input files', function (done) {
-				protoMapReduce.execute(doubleTestData).then(function (result) {
-					console.log(result);
-					expect(result).not.toBeDefined();
+			it('should work with multiple input files', function (done) {
+				fs.readFile(inputFileName, {encoding: 'utf8'}, function (err, data) {
+					if (err) throw err;
+					protoMapReduce.execute(doubleTestData).then(function (result) {
+						expect(result).toBe(data + data);
 					done();
+				});
 				});
 			});
 		});

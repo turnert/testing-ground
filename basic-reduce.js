@@ -4,7 +4,7 @@ function performReduce (data) {
 }
 
 function writeNext(datum, remainingData) {
-	process.stdout.write(datum + '\n', 'utf8', function () {
+	process.stdout.write(datum, 'utf8', function () {
 		var nextDatum;
 		if (remainingData.length > 0) {
 			nextDatum = remainingData.shift();
@@ -14,8 +14,6 @@ function writeNext(datum, remainingData) {
 }
 
 process.stdin.setEncoding('utf8');
-process.stdin.setMaxListeners(20000);
-process.stdout.setMaxListeners(20000);
 
 process.stdin.on('data', function (data) {
 	var reducedData = performReduce(data),
@@ -25,5 +23,5 @@ process.stdin.on('data', function (data) {
 });
 
 process.stdin.on('end', function() {
-	// process.exit();
+	process.exit();
 });

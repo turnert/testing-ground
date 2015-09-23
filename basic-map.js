@@ -12,6 +12,9 @@ process.stdin.on('data', function (data) {
 	});
 });
 
-process.stdin.on('end', function () {
-	process.exit();
+process.stdin.on('finish', function () {
+	process.stdout.destroy();
+	process.stdout.on('finish', function () {
+		process.exit();
+	});
 });

@@ -55,9 +55,7 @@ function MapReduce () {
 				reduceWorkersKilled += 1;
 				if (totalReducers == reduceWorkersKilled) {
 					console.log('no reducers left, time to resolve');
-					// setTimeout(function () { 
 					defer.resolve(allData);
-					// }, 10)
 				}
 		});
 	}
@@ -71,8 +69,6 @@ function MapReduce () {
 		var i;
 		for (i = 0; i < NUM_REDUCE_WORKERS; i++) {
 			allReduceWorkers.push(spawn('node', ['./basic-reduce.js']));
-			// handleStdoutData(workers[i]);
-			// handleExit(workers[i], 1);
 		}
 		
 		allReduceWorkers.forEach(initializeReduceWorker);
@@ -82,7 +78,6 @@ function MapReduce () {
 		worker.on('exit', function () {
 			totalMapWorkers -= 1;	
 			if (totalMapWorkers == 0) {
-				// defer.resolve(that.allData);
 				allReduceWorkers.forEach(function (workerToEnd) {
 					workerToEnd.stdin.end();						
 				});

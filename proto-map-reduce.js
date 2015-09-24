@@ -9,24 +9,38 @@ function MapReduce () {
 		Q = require('q'),
 		defer = Q.defer(),
 		spawn = require('child_process').spawn,
-		totalMapWorkers = 0,
-		NUM_MAP_WORKERS = 1,
+		NUM_MAP_WORKERS = 2,
+		totalMapWorkers = NUM_MAP_WORKERS,
 		NUM_REDUCE_WORKERS = 1,
+		ALPHABET_LENGTH = 26,
+		ASCII_LOWER_CASE_A = 97,
 		allMapWorkers = [],
 		allReduceWorkers = [],
 		reduceWorkersKilled = 0,
 		allData = '';
 	
 	that.execute = execute;
-	// that.data = '';
 	
-	// process.stdin.setEncoding('utf8');
-	// process.stdin.on('data', function (data) {
-	// 	aggregate(data);
-	// });
+	function alphabeticallyGivenGroup(group) {
+		return function alphabetically(val) {
+			var onlyAlphaNumeric = val.replace(/\W/g, ''),
+				firstLetter = onlyAlphaNumeric.charAt(0).toLowerCase(),
+				INCREMENT = Math.ceil(ALPHABET_LENGTH / NUM_MAP_WORKERS);
+				
+			return firstLetter.charCodeAt(0) >= (ASCII_LOWER_CASE_A + group * INCREMENT) && 
+				firstLetter.charCodeAt(0) < (ASCII_LOWER_CASE_A + (group + 1) * INCREMENT); 	
+		}
+	}
 	
 	function mapPartition (data) {
-		return [data];
+		var partitionedData = [],
+			i;
+		
+		for (i = 0; i < NUM_MAP_WORKERS; i++) {
+			partitionedData.push(data.filter(alphabeticallyGivenGroup(i)));
+		}
+		
+		return partitionedData;
 	}
 	
 	function reducePartition (data) {
@@ -34,8 +48,6 @@ function MapReduce () {
 	}
 	
 	function aggregate (data) {
-		// that.allData = that.allData + data;
-		// return that.allData;
 		allData = allData + data;
 		return allData;
 	}
@@ -43,7 +55,6 @@ function MapReduce () {
 	function handleStdoutData(reducer) {
 		reducer.stdout.setEncoding('utf8');
 		reducer.stdout.on('data', function (data) {
-			console.log('got reducer data: "' + data + '"');
 			aggregate(data);
 		});
 	}
@@ -51,10 +62,8 @@ function MapReduce () {
 	function handleExit(reducer) {
 		var totalReducers = allReduceWorkers.length;
 		reducer.on('exit', function () {
-			console.log('reducer is done processing input.  total reducers left:', totalReducers - reduceWorkersKilled);
 				reduceWorkersKilled += 1;
 				if (totalReducers == reduceWorkersKilled) {
-					console.log('no reducers left, time to resolve');
 					defer.resolve(allData);
 				}
 		});
@@ -75,19 +84,32 @@ function MapReduce () {
 	}
 	
 	function handleMapWorkerExit(worker) {
-		worker.on('exit', function () {
+		worker.stdout.on('finish', function () {
 			totalMapWorkers -= 1;	
 			if (totalMapWorkers == 0) {
-				allReduceWorkers.forEach(function (workerToEnd) {
-					workerToEnd.stdin.end();						
+				allMapWorkers.forEach(function (workerToEnd) {
+					workerToEnd.kill();
 				});
+				allReduceWorkers.forEach(endWorker);
 			}
 		});
 	}
 	
+	function endWorker(worker) {
+		worker.stdin.end();		
+	}
+	
 	function pipeNextFileToMap (fileName, mapWorker, remainingFiles) {
-		var readable = fs.createReadStream(fileName, {encoding: 'utf8'});
+		var readable;
 		
+		if (typeof fileName !== 'string' && remainingFiles.length == 0) {
+			endWorker(mapWorker);
+			return;
+		}
+		else if (typeof fileName !== 'string' && remainingFiles.length > 0) {
+			pipeNextFileToMap (remainingFiles.shift(), mapWorker, remainingFiles);
+		}
+		readable = fs.createReadStream(fileName, {encoding: 'utf8'});
 		readable.pipe(mapWorker.stdin, {end: false});
 		
 		
@@ -98,7 +120,7 @@ function MapReduce () {
 				nextFileName = remainingFiles.shift()
 				pipeNextFileToMap (nextFileName, mapWorker, remainingFiles);
 			} else {
-				mapWorker.stdin.end();
+				endWorker(mapWorker);
 			}
 		});
 	}
@@ -115,11 +137,19 @@ function MapReduce () {
 		return function initializeMapWorker(mapWorker, index) {
 			var allFiles = data[index],
 				fileName = allFiles.shift();
+				
+			// while (typeof fileName !== 'string' && allFiles.length > 0) {
+			// 	fileName = allFiles.shift();
+			// }
 			
-			totalMapWorkers += 1;
 			handleMapWorkerStdout(mapWorker);
-			pipeNextFileToMap(fileName, mapWorker, allFiles);
-			handleMapWorkerExit(mapWorker);		
+			handleMapWorkerExit(mapWorker);
+			// if (typeof fileName == 'string') {
+				pipeNextFileToMap(fileName, mapWorker, allFiles);			
+			// }
+			// else {
+			// 	mapWorker.stdin.end();
+			// }
 		}
 	}
 	
@@ -134,7 +164,7 @@ function MapReduce () {
 	
 	function execute (data) {
 		var partitionedData = mapPartition(data);
-		// that.allData = '';
+		
 		allData = '';
 		createReduceWorkers();
 		createMapWorkers(partitionedData);

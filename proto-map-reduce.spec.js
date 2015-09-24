@@ -1,4 +1,4 @@
-/* global describe, expect, it, beforeEach, xit */
+/* global describe, expect, it, beforeEach, xit, xdescribe */
 
 describe('proto map reduce', function () {
 	var ProtoMapReduce = require('./proto-map-reduce.js'),
@@ -6,14 +6,15 @@ describe('proto map reduce', function () {
 		fs = require('fs'),
 		methods = ['execute'],
 		inputFileName = './test',
+		inputFileNames = ['./test', './anotherTest'],
 		testData,
 		doubleTestData;
 	
 	
 	beforeEach(function () {
 		protoMapReduce = new ProtoMapReduce();
-		testData = [inputFileName];
-		doubleTestData = [inputFileName, inputFileName];
+		testData = [inputFileNames[0]];
+		doubleTestData = [inputFileNames[0], inputFileNames[0]];
 	});
 	describe('constructor', function () {
 		it('should be a constructor', function () {
@@ -52,13 +53,35 @@ describe('proto map reduce', function () {
 					});
 				})
 			});
-			it('should work with multiple input files', function (done) {
+			it('should return the expected string with multiple input files', function (done) {
 				fs.readFile(inputFileName, {encoding: 'utf8'}, function (err, data) {
 					if (err) throw err;
 					protoMapReduce.execute(doubleTestData).then(function (result) {
 						expect(result).toBe(data + data);
-					done();
+						done();
+					});
 				});
+			});
+			describe('multiple map workers', function () {
+				it('should return a string with non-trivial input and multiple map workers', function (done) {
+					protoMapReduce.execute(inputFileNames).then(function (result) {
+						expect(typeof result).toBe('string');
+						done();
+					});
+				});
+				it('should return a string that contains data from all input files', function (done) {
+					fs.readFile(inputFileNames[0], {encoding: 'utf8'}, function(err, data) {
+						if (err) throw err;
+						
+						fs.readFile(inputFileNames[1], {encoding: 'utf8'}, function (err, moreData) {
+							if (err) throw err;
+							protoMapReduce.execute(inputFileNames).then(function (result) {
+								expect(result.indexOf(data) >= 0).toBeTruthy();
+								expect(result.indexOf(moreData) >= 0).toBeTruthy();
+								done();
+							});
+						});
+					});
 				});
 			});
 		});
